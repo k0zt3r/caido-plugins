@@ -1,0 +1,10 @@
+{
+  "id": "local-sqlmap-manager",
+  "name": "SQLmap Manager",
+  "version": "0.2.2",
+  "description": "Selected requests, scoped sqlmap jobs, live logs and Findings.",
+  "plugins": [
+    {"kind": "backend", "id": "sqlmap-manager-backend", "name": "SQLmap backend", "runtime": "javascript", "entrypoint": "backend/script.js"},
+    {"kind": "frontend", "id": "sqlmap-manager-frontend", "name": "SQLmap Manager", "entrypoint": "frontend/script.js", "style": "frontend/style.css", "backend": {"id": "sqlmap-manager-backend"}}
+  ]
+}
