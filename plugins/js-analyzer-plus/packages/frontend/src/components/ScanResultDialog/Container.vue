@@ -2,7 +2,7 @@
 import Button from "primevue/button";
 import Panel from "primevue/panel";
 import SplitButton from "primevue/splitbutton";
-import type { ScanResult } from "shared";
+import { groupFindings, findingGroup, type ScanResult } from "shared";
 import { computed, ref, toRef } from "vue";
 
 import MatchRow from "./MatchRow.vue";
@@ -101,7 +101,24 @@ function onExportCsv() {
   });
 }
 
+function groupedReports(matches: MatchWithSource[]): MatchWithSource[] {
+  const urls = [...new Set(matches.map(m => m.sourceUrl))];
+  return urls.flatMap(url => groupFindings(matches.filter(m => m.sourceUrl === url)));
+}
+
 async function handleReport(match: MatchWithSource) {
+  const label = findingGroup(match);
+  if (label !== undefined) {
+    const routes = props.scanResult.entries
+      .filter(entry => entry.url === match.sourceUrl)
+      .flatMap(entry => entry.matches
+        .filter(m => findingGroup(m) === label)
+        .map(m => ({ ...m, sourceUrl: entry.url, requestId: entry.requestId, entryIndex: props.scanResult.entries.indexOf(entry) })));
+    const candidates = groupedReports(routes);
+    match = candidates.find(m => m.credentialPair?.some(f => f.start === match.credential?.start))
+      ?? candidates.find(m => m.credential?.start === match.credential?.start)
+      ?? candidates[0] ?? match;
+  }
   if (match.requestId === "inline") return;
   const title = buildFindingTitle(match);
   const description = buildFindingDescription(match, match.sourceUrl);
@@ -130,7 +147,7 @@ async function handleReport(match: MatchWithSource) {
 }
 
 async function handleReportAll(matches: MatchWithSource[]) {
-  const reportable = matches.filter((m) => m.requestId !== "inline");
+  const reportable = groupedReports(matches.filter((m) => m.requestId !== "inline"));
   if (reportable.length === 0) {
     props.sdk.window.showToast("No reportable matches (inline scan)", {
       variant: "info",

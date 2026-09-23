@@ -6,6 +6,7 @@ export type {
   AssetDetectedEvent,
 } from "./events";
 export type {
+  CredentialField,
   AnalyzerKind,
   ScanStatus,
   AnalyzerMatch,
@@ -17,4 +18,4 @@ export { ALL_ANALYZER_KINDS } from "./scan";
 export type { JsAnalyzerFilter, StaticAssetEntry } from "./filter";
 export type { UserConfig } from "./config";
 
-export { findingDedupeKey } from "./findings";
+export { findingDedupeKey, groupFindings, findingGroup, groupedFindingTitle, groupedFindingDescription, findingDescription } from "./findings";

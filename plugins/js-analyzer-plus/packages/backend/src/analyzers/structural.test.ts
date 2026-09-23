@@ -14,11 +14,11 @@ describe("merged structural analysis", () => {
     expect(source.slice(route!.rawStartOffset,route!.rawEndOffset)).toBe('`policy`');
     expect(mapBeautifiedOffsetsToRaw(source,[route!])[0]).toEqual(route);
   });
-  it("finds prefixed credentials and email while masking our secret result", () => {
+  it("finds prefixed credentials with their literal values and email", () => {
     const r=analyzeStructural(source,["secrets","sensitiveData"]);
     expect(r.some(m=>m.value.includes("testingPassword"))).toBe(true);
     expect(r.some(m=>m.value.includes("testing@juice-sh.op"))).toBe(true);
-    expect(JSON.stringify(r)).not.toContain("IamUsedForTesting");
+    expect(r.find(m => m.credential?.name === "testingPassword")?.credential?.value).toBe("IamUsedForTesting");
   });
   it("covers React Router, Vue/Nuxt, and Next.js Pages Router", () => {
     for(const source of [

@@ -5,16 +5,18 @@ import { analyze, MAX_BYTES } from "./local/analyzer.js";
 const KINDS: Record<string, AnalyzerKind> = {
   route: "frameworkPatterns",
   secret: "secrets",
+  login: "sensitiveData",
   email: "sensitiveData",
   storage: "sensitiveData",
   path: "apiEndpoints",
   http: "callPatterns",
+  cookie: "callPatterns",
   "http-expression": "stringExpressions",
   chunk: "chunkDiscovery",
   sourcemap: "inlineSourceMap",
 };
 
-/** Run on original source so nested routes and masked credentials keep exact source anchors. */
+/** Run on original source so nested routes and literal credentials keep exact source anchors. */
 export function analyzeStructural(content: string, kinds: AnalyzerKind[]): AnalyzerMatch[] {
   if (content.length > MAX_BYTES || !Object.values(KINDS).some(kind => kinds.includes(kind))) return [];
   const result = analyze(content);
@@ -23,11 +25,12 @@ export function analyzeStructural(content: string, kinds: AnalyzerKind[]): Analy
     if (kind === undefined || !kinds.includes(kind)) return [];
     const start = item.offset;
     const token = content.slice(start).match(/^(["'`])(?:\\[\s\S]|(?!\1)[^\\])*?\1/);
-    const end = Math.min(content.length, start + (token?.[0].length ?? 1));
+    const end = item.credential?.end ?? Math.min(content.length, start + (token?.[0].length ?? 1));
     const value = item.kind === "route"
       ? `[AST ${item.analyzer}${result.hashRouting ? " hash route" : " route"}] ${result.hashRouting ? "#" : ""}${item.value}`
       : `[AST ${item.kind}] ${item.value}`;
     return [{
+      credential: item.credential,
       analyzerKind: kind, value, startOffset: start, endOffset: end,
       rawStartOffset: start, rawEndOffset: end,
       confidence: item.kind === "route" ? "high" as const : "medium" as const,

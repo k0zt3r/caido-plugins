@@ -45,6 +45,16 @@ describe("automatic passive scan", () => {
     expect(create).toHaveBeenCalledTimes(count);
   });
 
+  it("does not automatically publish entropy matches", async () => {
+    const { sdk, request, response, create } = fixture();
+    const noisyResponse = { ...response, getBody: () => ({
+      toText: () => 'const hash = "aK9mZ3xQ7vB2nL5wR8jT4uY1cF6hG0eD"; fetch("/api/users");',
+    }) } as unknown as Response;
+    await scanInterceptedResponse(sdk, request, noisyResponse);
+    expect(create).toHaveBeenCalled();
+    expect(create.mock.calls.every(([spec]) => !spec.description.includes('High Entropy'))).toBe(true);
+  });
+
   it("honors disabled scanning and scope", async () => {
     const { sdk, request, response, create } = fixture();
     state.config.autoScanEnabled = false;

@@ -12,7 +12,7 @@ export default defineConfig({
   id,
   name: "JS Analyzer Plus",
   description: "Community JS Analyzer with local AST routes and credential analysis",
-  version: "1.1.1",
+  version: "1.1.5",
   author: {
     name: "Local fork; based on caido-community/JS-Analyzer",
     url: "https://github.com/caido-community/JS-Analyzer",

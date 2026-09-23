@@ -1,3 +1,4 @@
+import { groupedFindingTitle, findingDescription } from "shared";
 import type {
   AnalyzerKind,
   AnalyzerMatch,
@@ -144,27 +145,12 @@ export function buildFindingDescription(
   match: MatchWithSource,
   sourceUrl: string,
 ): string {
-  const kindLabel = ANALYZER_LABELS[match.analyzerKind] ?? match.analyzerKind;
-  const value =
-    match.value.length > 500
-      ? `${match.value.slice(0, 500)}\n...`
-      : match.value;
-  const valueBlock =
-    value.includes("\n") || value.length > 80
-      ? `\n\`\`\`\n${value}\n\`\`\``
-      : ` \`${value}\``;
-  return [
-    `**Type:** ${kindLabel}`,
-    `**Severity:** ${match.confidence}`,
-    `**Source:** ${sourceUrl}`,
-    `**Offset:** ${match.startOffset}-${match.endOffset}`,
-    `**Match:**${valueBlock}`,
-  ].join("\n\n");
+  return findingDescription(match, sourceUrl);
 }
 
 export function buildFindingTitle(match: MatchWithSource): string {
   const kindLabel = ANALYZER_LABELS[match.analyzerKind] ?? match.analyzerKind;
-  return `JS Analyzer: ${kindLabel}`;
+  return groupedFindingTitle(match) ?? `JS Analyzer: ${kindLabel}`;
 }
 
 export function downloadFile(content: string, filename: string): void {

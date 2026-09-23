@@ -6,6 +6,7 @@ import { isStaticAsset } from "../constants";
 import type { API, BackendEvents } from "../index";
 import { getConfigStore } from "../stores";
 
+import { isAutomaticFinding } from "./automaticFindings";
 import { reportFindings } from "./findingsService";
 
 export function registerAutoScan(sdk: SDK<API, BackendEvents>): void {
@@ -40,5 +41,5 @@ export async function scanInterceptedResponse(
     config.enabledAnalyzers,
     false,
   );
-  await reportFindings(sdk, request, matches);
+  await reportFindings(sdk, request, matches.filter(isAutomaticFinding));
 }

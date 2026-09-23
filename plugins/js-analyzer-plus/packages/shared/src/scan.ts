@@ -29,7 +29,20 @@ export const ALL_ANALYZER_KINDS: AnalyzerKind[] = [
 
 export type ScanStatus = "Idle" | "Scanning" | "Complete" | "Error";
 
+export type CredentialField = {
+  name: string;
+  value: string;
+  role: "login" | "password" | "secret";
+  group: string;
+  start: number;
+  end: number;
+  line: number;
+};
+
 export type AnalyzerMatch = {
+  credential?: CredentialField;
+  credentialPair?: CredentialField[];
+  findingSummary?: { label: string; paths: string[] };
   analyzerKind: AnalyzerKind;
   value: string;
   startOffset: number;
