@@ -4,6 +4,16 @@
 
 ## Плагины
 
+### JS Analyzer Plus
+
+Путь: `plugins/js-analyzer-plus/`. Пассивный анализ JS/JSON-трафика с автоматическим
+сохранением кандидатов в Findings и дедупликацией повторных ответов.
+При обновлении сохранённая настройка автоскана остаётся прежней; включение через
+палитру команд: `JS Analyzer Plus: Toggle automatic passive scan`.
+Сборка: `cd plugins/js-analyzer-plus && pnpm install --frozen-lockfile && pnpm build`.
+Готовый архив: `plugins/js-analyzer-plus/dist/plugin_package.zip`.
+Подробнее: [MERGE-NOTES.md](plugins/js-analyzer-plus/MERGE-NOTES.md).
+
 ### SQLmap Manager
 
 Путь: `plugins/sqlmap-manager/`
@@ -23,6 +33,7 @@ python3 build.py
 
 ```text
 plugins/
+├── js-analyzer-plus/ # анализ JS и Findings
 └── sqlmap-manager/   # отдельный SQLmap-плагин
 ```
 
