@@ -1,6 +1,6 @@
 {
   "name": "js-analyzer-plus",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "private": true,
   "scripts": {
     "typecheck": "pnpm -r typecheck",

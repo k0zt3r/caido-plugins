@@ -1,4 +1,4 @@
-# JS Analyzer Plus 1.1.5
+# JS Analyzer Plus 1.1.6
 
 Local derivative of https://github.com/caido-community/JS-Analyzer at commit
 8551df7183c0d132d76232e42e58e5ed8e04463c, merged with our JS Source Analyzer 0.1.1.
@@ -88,3 +88,10 @@ is displayed literally. Existing Findings are not rewritten.
 Validation includes the testingUsername/testingPassword class-field example, object/function
 boundaries, receiver separation, ambiguous logins, escaped values, dynamic expressions and
 list grouping. Live Caido rendering has not been checked.
+
+## 1.1.6: manual scan does not publish Findings
+
+Running a scan from the request context menu now only returns and stores analysis results.
+Creating Findings from those results requires the explicit Report/Report All action in the
+dialog. Passive traffic scanning retains the filtered and grouped automatic Findings policy.
+Previously created Findings are not deleted.

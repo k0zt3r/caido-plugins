@@ -10,7 +10,6 @@ import {
   type ScanFileInput,
 } from "../analyzers/runPassiveScan";
 import { isStaticAsset } from "../constants";
-import { reportFindings } from "./findingsService";
 
 import { ScanError } from "../errors";
 import { emit } from "../events";
@@ -166,11 +165,6 @@ export async function startPassiveScan(
 
   persistScanResult(scanResult);
   activeScans.delete(scanId);
-
-  for (const entry of entries) {
-    const reqRes = await sdk.requests.get(entry.requestId);
-    if (reqRes !== undefined) await reportFindings(sdk, reqRes.request, entry.matches);
-  }
 
   emit("scan-finished", {
     scanId,
