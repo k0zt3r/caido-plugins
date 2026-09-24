@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # ============================================================
 # Caido Plugins - install & build script
 #
-# Запуск из корня репозитория:
+# Run from repository root:
 #
 #   chmod +x install.sh
 #   ./install.sh
@@ -53,7 +53,7 @@ else
 fi
 
 # ------------------------------------------------------------
-# APT
+# APT helpers
 # ------------------------------------------------------------
 
 apt_update() {
@@ -212,15 +212,10 @@ if command -v pnpm >/dev/null 2>&1; then
 
     PNPM="pnpm"
 
-    PNPM_VERSION="$($PNPM --version)"
-
-    success "pnpm $PNPM_VERSION"
-
 else
 
     warning "pnpm was not found."
 
-    # Try Corepack first.
     if command -v corepack >/dev/null 2>&1; then
 
         echo "Installing pnpm through Corepack..."
@@ -230,7 +225,6 @@ else
 
     else
 
-        # Ubuntu Node.js packages sometimes don't provide Corepack.
         echo "Corepack is unavailable."
         echo "Installing pnpm through npm..."
 
@@ -244,11 +238,11 @@ else
     fi
 
     PNPM="pnpm"
-
-    PNPM_VERSION="$($PNPM --version)"
-
-    success "pnpm $PNPM_VERSION"
 fi
+
+PNPM_VERSION="$($PNPM --version)"
+
+success "pnpm $PNPM_VERSION"
 
 # ------------------------------------------------------------
 # Final dependency check
@@ -285,9 +279,86 @@ log "Preparing JS Analyzer Plus"
 
 cd "$JS_PLUGIN_DIR"
 
+PNPM_WORKSPACE_FILE="$JS_PLUGIN_DIR/pnpm-workspace.yaml"
+
+if [[ ! -f "$PNPM_WORKSPACE_FILE" ]]; then
+    error "pnpm-workspace.yaml not found:"
+    error "$PNPM_WORKSPACE_FILE"
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Configure pnpm build permissions
+#
 # pnpm 10+ blocks dependency build scripts by default.
-# Allow esbuild to execute its build/postinstall scripts.
-"$PNPM" config set --location=project onlyBuiltDependencies esbuild
+#
+# We need:
+#
+# onlyBuiltDependencies:
+#   - esbuild
+#
+# Do not use `pnpm config set` here because it may write:
+#
+# onlyBuiltDependencies: esbuild
+#
+# which is invalid YAML for pnpm-workspace.yaml.
+# ------------------------------------------------------------
+
+log "Configuring pnpm build permissions"
+
+"$PYTHON" - "$PNPM_WORKSPACE_FILE" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+
+text = path.read_text()
+
+lines = text.splitlines()
+
+# Remove any existing onlyBuiltDependencies block.
+output = []
+i = 0
+
+while i < len(lines):
+    line = lines[i]
+
+    if line.startswith("onlyBuiltDependencies:"):
+        i += 1
+
+        # Remove following YAML list items belonging to this key.
+        while i < len(lines):
+            next_line = lines[i]
+
+            if next_line.startswith("  - "):
+                i += 1
+                continue
+
+            if next_line.strip() == "":
+                i += 1
+                continue
+
+            break
+
+        continue
+
+    output.append(line)
+    i += 1
+
+# Remove trailing empty lines.
+while output and output[-1].strip() == "":
+    output.pop()
+
+# Add the correct configuration.
+output.append("")
+output.append("onlyBuiltDependencies:")
+output.append("  - esbuild")
+output.append("")
+
+path.write_text("\n".join(output))
+
+print("Configured onlyBuiltDependencies: esbuild")
+PY
 
 success "esbuild build scripts allowed"
 
