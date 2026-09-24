@@ -6,8 +6,10 @@ set -Eeuo pipefail
 # Caido Plugins - install & build script
 #
 # Запуск из корня репозитория:
+#
 #   chmod +x install.sh
 #   ./install.sh
+#
 # ============================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,7 +18,7 @@ JS_PLUGIN_DIR="$ROOT_DIR/plugins/js-analyzer-plus"
 SQLMAP_PLUGIN_DIR="$ROOT_DIR/plugins/sqlmap-manager"
 
 # ------------------------------------------------------------
-# Colors / logging
+# Logging
 # ------------------------------------------------------------
 
 log() {
@@ -36,10 +38,10 @@ error() {
 }
 
 # ------------------------------------------------------------
-# Root / sudo
+# Sudo
 # ------------------------------------------------------------
 
-if [[ $EUID -eq 0 ]]; then
+if [[ "$EUID" -eq 0 ]]; then
     SUDO=""
 else
     if ! command -v sudo >/dev/null 2>&1; then
@@ -51,7 +53,7 @@ else
 fi
 
 # ------------------------------------------------------------
-# APT helpers
+# APT
 # ------------------------------------------------------------
 
 apt_update() {
@@ -62,23 +64,27 @@ apt_update() {
     success "apt package index updated"
 }
 
-install_apt_package() {
-    local package="$1"
+install_apt_packages() {
+    local packages=("$@")
 
-    if dpkg -s "$package" >/dev/null 2>&1; then
-        success "$package is already installed"
+    if [[ ${#packages[@]} -eq 0 ]]; then
         return 0
     fi
 
-    echo "Installing $package..."
+    echo
+    echo "Installing missing packages:"
+    printf '  - %s\n' "${packages[@]}"
+    echo
 
-    $SUDO apt-get install -y "$package"
+    apt_update
 
-    success "$package installed"
+    $SUDO apt-get install -y "${packages[@]}"
+
+    success "Missing system packages installed"
 }
 
 # ------------------------------------------------------------
-# Repository structure
+# Check repository
 # ------------------------------------------------------------
 
 log "Checking repository"
@@ -103,39 +109,32 @@ success "Repository structure looks correct"
 
 log "Checking system dependencies"
 
-MISSING_APT_PACKAGES=()
+MISSING_PACKAGES=()
 
-for package in \
-    ca-certificates \
-    curl \
-    git \
-    unzip \
-    zip \
-    build-essential \
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev \
+REQUIRED_PACKAGES=(
+    ca-certificates
+    curl
+    git
+    unzip
+    zip
+    build-essential
+    python3
+    python3-pip
+    python3-venv
+    python3-dev
     npm
-do
-    if ! dpkg -s "$package" >/dev/null 2>&1; then
-        MISSING_APT_PACKAGES+=("$package")
-    else
+)
+
+for package in "${REQUIRED_PACKAGES[@]}"; do
+    if dpkg -s "$package" >/dev/null 2>&1; then
         success "$package"
+    else
+        MISSING_PACKAGES+=("$package")
     fi
 done
 
-if [[ ${#MISSING_APT_PACKAGES[@]} -gt 0 ]]; then
-    echo
-    echo "Missing packages:"
-    printf '  - %s\n' "${MISSING_APT_PACKAGES[@]}"
-    echo
-
-    apt_update
-
-    $SUDO apt-get install -y "${MISSING_APT_PACKAGES[@]}"
-
-    success "Missing system packages installed"
+if [[ ${#MISSING_PACKAGES[@]} -gt 0 ]]; then
+    install_apt_packages "${MISSING_PACKAGES[@]}"
 else
     success "All required system packages are installed"
 fi
@@ -146,22 +145,15 @@ fi
 
 log "Checking Python"
 
-PYTHON=""
-
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON="python3"
-elif command -v python >/dev/null 2>&1; then
-    if python --version 2>&1 | grep -q "Python 3"; then
-        PYTHON="python"
-    fi
-fi
-
-if [[ -z "$PYTHON" ]]; then
-    error "Python 3 is still unavailable after installation."
+if ! command -v python3 >/dev/null 2>&1; then
+    error "Python 3 is not available."
     exit 1
 fi
 
+PYTHON="python3"
+
 PYTHON_VERSION="$($PYTHON --version 2>&1)"
+
 success "$PYTHON_VERSION"
 
 # ------------------------------------------------------------
@@ -175,16 +167,16 @@ if ! command -v node >/dev/null 2>&1; then
 
     apt_update
 
-    # Ubuntu repository package.
     $SUDO apt-get install -y nodejs
+fi
 
-    if ! command -v node >/dev/null 2>&1; then
-        error "Node.js installation failed."
-        exit 1
-    fi
+if ! command -v node >/dev/null 2>&1; then
+    error "Node.js installation failed."
+    exit 1
 fi
 
 NODE_VERSION="$(node --version)"
+
 success "Node.js $NODE_VERSION"
 
 # ------------------------------------------------------------
@@ -197,15 +189,17 @@ if ! command -v npm >/dev/null 2>&1; then
     warning "npm was not found."
 
     apt_update
-    $SUDO apt-get install -y npm
 
-    if ! command -v npm >/dev/null 2>&1; then
-        error "npm installation failed."
-        exit 1
-    fi
+    $SUDO apt-get install -y npm
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+    error "npm installation failed."
+    exit 1
 fi
 
 NPM_VERSION="$(npm --version)"
+
 success "npm $NPM_VERSION"
 
 # ------------------------------------------------------------
@@ -218,25 +212,25 @@ if command -v pnpm >/dev/null 2>&1; then
 
     PNPM="pnpm"
 
+    PNPM_VERSION="$($PNPM --version)"
+
+    success "pnpm $PNPM_VERSION"
+
 else
 
     warning "pnpm was not found."
 
-    # First try Corepack if available.
+    # Try Corepack first.
     if command -v corepack >/dev/null 2>&1; then
 
         echo "Installing pnpm through Corepack..."
 
         corepack enable
-
-        # Use the latest stable pnpm.
         corepack prepare pnpm@latest --activate
 
     else
 
-        # Node.js from Ubuntu may not contain Corepack.
-        # Install pnpm through npm instead.
-
+        # Ubuntu Node.js packages sometimes don't provide Corepack.
         echo "Corepack is unavailable."
         echo "Installing pnpm through npm..."
 
@@ -250,16 +244,17 @@ else
     fi
 
     PNPM="pnpm"
+
+    PNPM_VERSION="$($PNPM --version)"
+
+    success "pnpm $PNPM_VERSION"
 fi
 
-PNPM_VERSION="$($PNPM --version)"
-success "pnpm $PNPM_VERSION"
-
 # ------------------------------------------------------------
-# Verify all required commands
+# Final dependency check
 # ------------------------------------------------------------
 
-log "Final dependency check"
+log "Running final dependency check"
 
 REQUIRED_COMMANDS=(
     git
@@ -286,9 +281,21 @@ done
 # JS Analyzer Plus
 # ------------------------------------------------------------
 
-log "Installing JS Analyzer Plus dependencies"
+log "Preparing JS Analyzer Plus"
 
 cd "$JS_PLUGIN_DIR"
+
+# pnpm 10+ blocks dependency build scripts by default.
+# Allow esbuild to execute its build/postinstall scripts.
+"$PNPM" config set --location=project onlyBuiltDependencies esbuild
+
+success "esbuild build scripts allowed"
+
+# ------------------------------------------------------------
+# Install JS dependencies
+# ------------------------------------------------------------
+
+log "Installing JS Analyzer Plus dependencies"
 
 "$PNPM" install --frozen-lockfile
 
@@ -353,7 +360,7 @@ fi
 success "SQLmap Manager package created"
 
 # ------------------------------------------------------------
-# Final
+# Final output
 # ------------------------------------------------------------
 
 cd "$ROOT_DIR"
@@ -372,4 +379,4 @@ printf 'SQLmap Manager:\n'
 printf '  %s\n' "$SQLMAP_PACKAGE"
 printf '\n'
 
-printf 'Done.\n'
+printf 'Build completed successfully.\n'
